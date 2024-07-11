@@ -1,0 +1,820 @@
+<html>
+<head>
+	<title>量子五目並べ</title>
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<style>
+		#board {
+			border-spacing: 0.0rem;
+			background-color: #C1D98A;
+			user-select: none;
+		}
+		#board td {
+			padding: 0.0rem;
+			margin: 0.0rem;
+		}
+		.line {
+			font-size: 2.0rem;
+		}
+		.star {
+			font-size: 2.5rem;
+		}
+		.stone-body {
+			font-size: 3.0rem;
+		}
+		.stone-number {
+			font-size: 1.0rem;
+			font-weight: bold;
+		}
+		.stone10 .stone-body {
+			color: #E6E6E6;
+		}
+		.stone30 .stone-body {
+			color: #B3B3B3;
+		}
+		.stone70 .stone-body {
+			color: #4D4D4D;
+		}
+		.stone90 .stone-body {
+			color: #1A1A1A;
+		}
+		.black-stone .stone-body {
+			color: black;
+		}
+		.white-stone .stone-body {
+			color: white;
+		}
+		.stone10 .stone-number,
+		.stone30 .stone-number {
+			color: black;
+		}
+		.stone70 .stone-number,
+		.stone90 .stone-number {
+			color: white;
+		}
+		#stone30-next,
+		#stone70-next {
+			color: white;
+		}
+		.wrappable-box {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
+		}
+		.box {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+		.measurement-button {
+			width: 3.5rem;
+		}
+		.measurement-end-button {
+			width: 7.0rem;
+		}
+		.phase-marker {
+			width: 1.0rem;
+			height: 4.5rem;
+			margin-right: 0.1rem;
+			text-align: center;
+			align-content: center;
+			color: white;
+			font-weight: bold;
+			border-style: solid;
+			border-width: 0.1rem;
+			border-color: gray;
+		}
+		#black-stone-phase .phase-marker {
+			background-color: gray;
+		}
+		.overlap {
+			position: relative;
+			line-height: 2.0rem;
+		}
+		.overlap *:nth-child(n+2){
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+		}
+		.center {
+			text-align: center;
+		}
+	</style>
+	
+	<script>
+		window.onload = function(){
+			const STONE_10 = "stone10";
+			const STONE_30 = "stone30";
+			const STONE_70 = "stone70";
+			const STONE_90 = "stone90";
+			const BLACK_STONE = "black-stone";
+			const WHITE_STONE = "white-stone";
+			
+			const STONE_90_NEXT = "stone90-next";
+			const STONE_70_NEXT = "stone70-next";
+			const STONE_10_NEXT = "stone10-next";
+			const STONE_30_NEXT = "stone30-next";
+			
+			const ORDER_OF_STONES = [STONE_90, STONE_10, STONE_70, STONE_30];
+			let nextStoneIndex = 0;
+			
+			let BLACK_STONE_PHASE       = "black-stone-phase"
+			let BLACK_MEASUREMENT_PHASE = "black-measurement-phase";
+			let WHITE_STONE_PHASE       = "white-stone-phase";
+			let WHITE_MEASUREMENT_PHASE = "white-measurement-phase";
+			const ORDER_OF_PHASES = [BLACK_STONE_PHASE, BLACK_MEASUREMENT_PHASE, WHITE_STONE_PHASE, WHITE_MEASUREMENT_PHASE];
+			let currentPhaseIndex = 0;
+			
+			function putStone(grid){
+				let clazz = ORDER_OF_STONES[nextStoneIndex];
+				let stone = grid.getElementsByClassName(clazz)[0];
+				stone.style.display = "block";
+			}
+			
+			function displayBlackStoneAndWhiteStone(grids){
+				function measure(stone, probability){
+					[...grids].filter(grid => grid.getElementsByClassName(stone)[0].style.display == "block").forEach(grid => {
+						let clazz = Math.random() < probability ? BLACK_STONE : WHITE_STONE;
+						grid.getElementsByClassName(clazz)[0].style.display = "block";
+					});
+				}
+				measure(STONE_10, 0.1);
+				measure(STONE_30, 0.3);
+				measure(STONE_70, 0.7);
+				measure(STONE_90, 0.9);
+			}
+			
+			function hideBlackStoneAndWhiteStone(grids){
+				[...grids].forEach(grid => {
+					grid.getElementsByClassName(BLACK_STONE)[0].style.display = "none";
+					grid.getElementsByClassName(WHITE_STONE)[0].style.display = "none";
+				});
+			}
+			
+			function moveNext(){
+				nextStoneIndex = (nextStoneIndex + 1) % ORDER_OF_STONES.length;
+				const updateNextStyle = (id, show1, show2) => document.getElementById(id).style.color
+					= nextStoneIndex == show1 || nextStoneIndex == show2 ? "black" : "white";
+				updateNextStyle(STONE_90_NEXT, 0, 3);
+				updateNextStyle(STONE_70_NEXT, 1, 2);
+				updateNextStyle(STONE_10_NEXT, 0, 1);
+				updateNextStyle(STONE_30_NEXT, 2, 3);
+			}
+			
+			function movePhaseMarker(){
+				const getCurrentMarkerStyle = () => document
+					.getElementById(ORDER_OF_PHASES[currentPhaseIndex])
+					.getElementsByClassName("phase-marker")[0].style;
+				getCurrentMarkerStyle().backgroundColor = "white";
+				currentPhaseIndex = (currentPhaseIndex + 1) % ORDER_OF_PHASES.length;
+				getCurrentMarkerStyle().backgroundColor = "gray";
+			}
+			
+			function activateMeasurementButtons(){
+				let buttons = document.getElementById(ORDER_OF_PHASES[currentPhaseIndex])
+						.getElementsByClassName("measurement-button");
+				Array.from(buttons).forEach(button => button.disabled = false);
+			}
+			
+			function deactivateMeasurementButtons(buttons){
+				Array.from(buttons).forEach(button => button.disabled = true);
+			}
+			
+			let grids = document.getElementsByClassName("grid");
+			Array.from(grids).forEach(grid => {
+				function createStone(clazz, number = null){
+					function create(clazz, text = null){
+						let div = document.createElement("div");
+						div.classList.add(clazz)
+						text && div.appendChild(document.createTextNode(text));
+						return div;
+					}
+					let stone = create(clazz);
+					stone.appendChild(create("stone-body", "●"));
+					number && stone.appendChild(create("stone-number", number));
+					stone.style.display = "none";
+					return stone;
+				}
+				
+				function isStonePhase(){
+					let phase = ORDER_OF_PHASES[currentPhaseIndex];
+					return phase == BLACK_STONE_PHASE || phase == WHITE_STONE_PHASE;
+				}
+				
+				grid.appendChild(createStone(STONE_10, 10));
+				grid.appendChild(createStone(STONE_30, 30));
+				grid.appendChild(createStone(STONE_70, 70));
+				grid.appendChild(createStone(STONE_90, 90));
+				grid.appendChild(createStone(BLACK_STONE));
+				grid.appendChild(createStone(WHITE_STONE));
+				
+				grid.onclick = () => {
+					if(!isStonePhase()){
+						return;
+					}
+					
+					let isAllEmpty = ORDER_OF_STONES
+							.map(name => grid.getElementsByClassName(name)[0])
+							.every(stone => stone.style.display == "none");
+					if(!isAllEmpty){
+						return;
+					}
+					
+					putStone(grid);
+					moveNext();
+					movePhaseMarker();
+					activateMeasurementButtons();
+				};
+				grid.onmouseover  = () => isStonePhase() && (grid.style.backgroundColor = "gray");
+				grid.onmouseleave = () => grid.style.backgroundColor = "";
+			});
+			
+			[BLACK_MEASUREMENT_PHASE, WHITE_MEASUREMENT_PHASE].forEach(phase => {
+				let measurementPhaseElement = document.getElementById(phase);
+				let buttons = measurementPhaseElement.getElementsByClassName("measurement-button");
+				buttons[0].onclick = () => {
+					displayBlackStoneAndWhiteStone(grids);
+					deactivateMeasurementButtons(buttons);
+					measurementPhaseElement.getElementsByClassName("measurement-end-button")[0].disabled = false;
+				};
+				buttons[1].onclick = () => {
+					deactivateMeasurementButtons(buttons);
+					movePhaseMarker();
+				};
+			});
+			
+			[...document.getElementsByClassName("measurement-end-button")]
+			.forEach(button => button.onclick = () => {
+				button.disabled = true;
+				hideBlackStoneAndWhiteStone(grids);
+				movePhaseMarker();
+			});
+		}
+	</script>
+</head>
+<body>
+	<h1 class="center">量子五目並べ</h1>
+	
+	<div class="wrappable-box">
+		<table id="board">
+			<tr>
+				<th></th>
+				<th><div>A</div></th>
+				<th><div>B</div></th>
+				<th><div>C</div></th>
+				<th><div>D</div></th>
+				<th><div>E</div></th>
+				<th><div>F</div></th>
+				<th><div>G</div></th>
+				<th><div>H</div></th>
+				<th><div>I</div></th>
+				<th><div>J</div></th>
+				<th><div>K</div></th>
+				<th><div>L</div></th>
+				<th><div>M</div></th>
+				<th><div>N</div></th>
+				<th><div>O</div></th>
+				<th><div>P</div></th>
+				<th><div>Q</div></th>
+				<th><div>R</div></th>
+				<th><div>S</div></th>
+			</tr>
+			<tr>
+				<th><div>0</div></th>
+				<td><div class="grid overlap"><div class="line">┌</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┬</div></div></td>
+				<td><div class="grid overlap"><div class="line">┐</div></div></td>
+			</tr>
+			<tr>
+				<th><div>1</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>2</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>3</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap">
+					<div class="line">┼</div>
+					<div class="star">・</div>
+				</div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap">
+					<div class="line">┼</div>
+					<div class="star">・</div>
+				</div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap">
+					<div class="line">┼</div>
+					<div class="star">・</div>
+				</div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>4</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>5</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>6</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>7</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>8</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>9</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap">
+					<div class="line">┼</div>
+					<div class="star">・</div>
+				</div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap">
+					<div class="line">┼</div>
+					<div class="star">・</div>
+				</div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap">
+					<div class="line">┼</div>
+					<div class="star">・</div>
+				</div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>10</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>11</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>12</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>13</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>14</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>15</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap">
+					<div class="line">┼</div>
+					<div class="star">・</div>
+				</div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap">
+					<div class="line">┼</div>
+					<div class="star">・</div>
+				</div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap">
+					<div class="line">┼</div>
+					<div class="star">・</div>
+				</div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>16</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>17</div></th>
+				<td><div class="grid overlap"><div class="line">├</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┼</div></div></td>
+				<td><div class="grid overlap"><div class="line">┤</div></div></td>
+			</tr>
+			<tr>
+				<th><div>18</div></th>
+				<td><div class="grid overlap"><div class="line">└</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┴</div></div></td>
+				<td><div class="grid overlap"><div class="line">┘</div></div></td>
+			</tr>
+		</table>
+		
+		<div>
+			<table border="1">
+				<tr>
+					<th>黒</th>
+					<th>白</th>
+				</tr>
+				<tr>
+					<td>
+						<div id="black-stone-phase" class="box">
+							<div class="phase-marker">＞</div>
+							<div class="center">
+								<small id="stone90-next">next</small>
+								<div class="stone90 overlap">
+									<div class="stone-body">●</div>
+									<div class="stone-number">90</div>
+								</div>
+							</div>
+							<div class="center">
+								<small id="stone70-next">next</small>
+								<div class="stone70 overlap">
+									<div class="stone-body">●</div>
+									<div class="stone-number">70</div>
+								</div>
+							</div>
+						</div>
+					</td>
+					<td>
+						<div id="white-stone-phase" class="box">
+							<div class="phase-marker">＞</div>
+							<div class="center">
+								<small id="stone10-next">next</small>
+								<div class="stone10 overlap">
+									<div class="stone-body">●</div>
+									<div class="stone-number">10</div>
+								</div>
+							</div>
+							<div class="center">
+								<small id="stone30-next">next</small>
+								<div class="stone30 overlap">
+									<div class="stone-body">●</div>
+									<div class="stone-number">30</div>
+								</div>
+							</div>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<div id="black-measurement-phase" class="box">
+							<div class="phase-marker">＞</div>
+							<div>
+								<div class="center">
+									<span>観測：残り</span><span id="number-of-black-measurements">2</span><span>回</span>
+								</div>
+								<div class="center">
+									<button class="measurement-button" disabled>する</button><button disabled class="measurement-button">しない</button>
+								</div>
+								<div class="center">
+									<button class="measurement-end-button" disabled>観測を終了</button>
+								</div>
+							</div>
+						</div>
+					</td>
+					<td>
+						<div id="white-measurement-phase" class="box">
+							<div class="phase-marker">＞</div>
+							<div>
+								<div class="center">
+									<span>観測：残り</span><span id="number-of-white-measurements">2</span><span>回</span>
+								</div>
+								<div class="center">
+									<button class="measurement-button" disabled>する</button><button disabled class="measurement-button">しない</button>
+								</div>
+								<div class="center">
+									<button class="measurement-end-button" disabled>観測を終了</button>
+								</div>
+							</div>
+						</div>
+					</td>
+				</tr>
+			</table>
+			
+			<p class="center">
+			<button>リセット</button>
+			
+			<p class="center">
+			<a href="https://youtu.be/mitAxA3f4U4?si=a3kATylXpPB4v_5q" target="_blank">元ネタ(YouTube)</a>
+		</div>
+	</div>
+</body>
+</html>
